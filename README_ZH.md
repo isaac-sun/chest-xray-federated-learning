@@ -296,7 +296,7 @@ Grad-CAM 高亮对模型预测影响最大的图像区域，用于检验模型�
 - 全局种子（`config.seed`）应用于 `random`、`numpy`、`torch`、`torch.cuda`
 - 设置 `torch.backends.cudnn.deterministic = True`、`benchmark = False`
 - 在相同配置 + 种子 + 硬件下，可最小化运行间波动
-- 已保存的检查点（`outputs/models/*.pt`）与历史记录（`outputs/logs/*.json`）支持通过 `python src/evaluate.py` 免训练重新评估
+- 已提交的历史记录（`outputs/logs/*.json`）可让 `python src/evaluate.py` 免训练重绘图表；模型检查点（`outputs/models/*.pt`）仅在本地生成，不纳入版本管理
 
 ---
 
@@ -313,7 +313,7 @@ Grad-CAM 高亮对模型预测影响最大的图像区域，用于检验模型�
 | `src/evaluate.py` | 指标、混淆矩阵、ROC、柱状图、训练曲线、Grad-CAM、样例预测 |
 | `src/utils.py` | 种子、配置加载、设备检测、二分类指标、序列化辅助 |
 | `configs/config.yaml` | 所有超参数集中管理 |
-| `outputs/` | 已提交的检查点、指标 JSON 与图表供参考 |
+| `outputs/` | 已提交的指标 JSON 与图表供参考；模型检查点仅在本地生成，不纳入版本管理 |
 
 ---
 

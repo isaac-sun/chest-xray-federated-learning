@@ -29,8 +29,8 @@ ENV/
 # --- Dataset (not tracked, provide your own) ---
 data/
 
-# --- Experiment artifacts (kept by default; comment out to ignore) ---
-# outputs/models/
+# --- Experiment artifacts (plots/logs kept for reference; checkpoints stay local) ---
+outputs/models/
 # outputs/logs/
 # outputs/plots/
 

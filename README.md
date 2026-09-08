@@ -297,7 +297,7 @@ Grad-CAM highlights the image regions most influential to the model's prediction
 - A global seed (`config.seed`) is applied to `random`, `numpy`, `torch`, and `torch.cuda`
 - `torch.backends.cudnn.deterministic = True` and `benchmark = False` are set
 - With the same config + seed + hardware, run-to-run variance is minimized
-- Saved checkpoints (`outputs/models/*.pt`) and histories (`outputs/logs/*.json`) allow re-evaluation via `python src/evaluate.py` without retraining
+- Committed histories (`outputs/logs/*.json`) let `python src/evaluate.py` regenerate plots without retraining; model checkpoints (`outputs/models/*.pt`) are written locally and are not tracked
 
 ---
 
@@ -314,7 +314,7 @@ Grad-CAM highlights the image regions most influential to the model's prediction
 | `src/evaluate.py` | Metrics, confusion matrix, ROC, bar chart, training curves, Grad-CAM, sample predictions |
 | `src/utils.py` | Seed, config loader, device detection, binary metrics, serialization helpers |
 | `configs/config.yaml` | All hyperparameters in one place |
-| `outputs/` | Committed checkpoints, metrics JSON, and plots for reference |
+| `outputs/` | Committed metrics JSON and plots for reference; model checkpoints are generated locally and not tracked |
 
 ---
 
