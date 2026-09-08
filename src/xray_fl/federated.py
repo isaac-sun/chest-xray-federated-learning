@@ -1,19 +1,20 @@
+"""Federated learning primitives: local client training and FedAvg aggregation."""
+
 from copy import deepcopy
-from typing import Dict
 
 import torch
 import torch.nn as nn
 from torch.optim import Adam
 from tqdm import tqdm
 
-from model import build_model
-from utils import epoch_binary_accuracy, state_dict_to_cpu
+from .model import build_model
+from .utils import epoch_binary_accuracy, state_dict_to_cpu
 
 
 class FederatedClient:
     """Federated client that performs local model training on its private subset."""
 
-    def __init__(self, client_id: int, train_loader, config: Dict, device: torch.device):
+    def __init__(self, client_id: int, train_loader, config: dict, device: torch.device):
         self.client_id = client_id
         self.train_loader = train_loader
         self.config = config
@@ -25,7 +26,7 @@ class FederatedClient:
         self.model_name = config["model"]["name"]
         self.pretrained = config["model"]["pretrained"]
 
-    def train(self, global_state: Dict[str, torch.Tensor], round_idx: int, pos_weight: torch.Tensor):
+    def train(self, global_state: dict[str, torch.Tensor], round_idx: int, pos_weight: torch.Tensor):
         """Train local model initialized from global state and return updated weights."""
         model = build_model(self.model_name, pretrained=self.pretrained).to(self.device)
         model.load_state_dict(deepcopy(global_state))
@@ -75,3 +76,25 @@ class FederatedClient:
             "loss": float(epoch_losses[-1]) if epoch_losses else 0.0,
             "accuracy": float(epoch_accs[-1]) if epoch_accs else 0.0,
         }
+
+
+def fedavg(client_updates: list[dict]) -> dict[str, torch.Tensor]:
+    """Aggregate client model weights using sample-size weighted FedAvg."""
+    if not client_updates:
+        raise ValueError("No client updates provided for aggregation.")
+
+    total_samples = sum(update["num_samples"] for update in client_updates)
+    if total_samples <= 0:
+        raise ValueError("Total number of samples across clients must be positive.")
+
+    avg_state = deepcopy(client_updates[0]["state_dict"])
+    for key in avg_state:
+        avg_state[key] = torch.zeros_like(avg_state[key], dtype=torch.float32)
+
+    for update in client_updates:
+        weight = update["num_samples"] / total_samples
+        local_state = update["state_dict"]
+        for key in avg_state:
+            avg_state[key] += local_state[key].float() * weight
+
+    return avg_state

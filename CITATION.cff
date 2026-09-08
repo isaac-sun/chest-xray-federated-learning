@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: "Chest X-ray Pneumonia Classification with Centralized + Federated Learning"
+message: "If you use this code or the reported results, please cite it as below."
+type: software
+authors:
+  - family-names: Sun
+    given-names: Yinan
+    email: scyys25@nottingham.edu.cn
+    affiliation: "University of Nottingham"
+license: MIT
+repository-code: "https://github.com/isaac-sun/chest-xray-federated-learning"
+version: 0.1.0
+date-released: "2026-09-08"
+keywords:
+  - federated learning
+  - chest X-ray
+  - pneumonia classification
+  - PyTorch
+  - Grad-CAM
+abstract: >-
+  A reproducible PyTorch experiment comparing centralized training with federated
+  learning (FedAvg) for binary pneumonia classification on chest X-ray images,
+  including non-IID client simulation, class-imbalance handling, a full evaluation
+  suite, and Grad-CAM explainability.

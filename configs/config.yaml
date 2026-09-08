@@ -12,7 +12,7 @@ data:
   normalize_std: [0.229, 0.224, 0.225]
 
 model:
-  name: resnet18           # options: simple_cnn, resnet18
+  name: resnet18            # options: simple_cnn, resnet18
   pretrained: false
 
 training:
@@ -20,6 +20,7 @@ training:
   epochs: 10
   learning_rate: 0.0003
   weight_decay: 0.00001
+  use_weighted_sampler: true  # WeightedRandomSampler for the imbalanced training set
 
 federated:
   num_clients: 5
@@ -35,7 +36,6 @@ federated:
   noniid_shuffle_target_ratios: true
 
 paths:
-  outputs_dir: outputs
-  models_dir: outputs/models
-  plots_dir: outputs/plots
-  logs_dir: outputs/logs
+  models_dir: outputs/models   # checkpoints, generated locally (not tracked)
+  plots_dir: outputs/plots     # figures, generated locally (not tracked)
+  results_dir: results         # metrics + training history, tracked for reference

@@ -1,12 +1,20 @@
-# Chest X-ray Pneumonia Classification with Centralized + Federated Learning
+<div align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-ee4c2c.svg)](https://pytorch.org/)
+# Chest X-ray Pneumonia Classification
+
+**Centralized learning vs. federated learning (FedAvg) in PyTorch**
+
+[![CI](https://github.com/isaac-sun/chest-xray-federated-learning/actions/workflows/ci.yml/badge.svg)](https://github.com/isaac-sun/chest-xray-federated-learning/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-ee4c2c.svg)](https://pytorch.org/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
-> **中文文档 / Chinese version:** [README_ZH.md](README_ZH.md)
+<sub>中文文档 → [README_ZH.md](README_ZH.md)</sub>
 
-A complete PyTorch experiment that compares **centralized deep learning** with **federated learning (FedAvg)** for binary pneumonia classification on chest X-ray images. The pipeline covers data loading, non-IID client simulation, model training, full evaluation, visualization, and Grad-CAM explainability.
+</div>
+
+A complete, reproducible PyTorch experiment that compares **centralized deep learning** with **federated learning (FedAvg)** for binary pneumonia classification on chest X-ray images. The pipeline covers data loading, non-IID client simulation, model training, full evaluation, visualization, and Grad-CAM explainability.
 
 ---
 
@@ -16,15 +24,17 @@ A complete PyTorch experiment that compares **centralized deep learning** with *
 - [Features](#features)
 - [Pipeline](#pipeline)
 - [Project Structure](#project-structure)
-- [Environment Setup](#environment-setup)
+- [Installation](#installation)
 - [Dataset](#dataset)
-- [Quick Start](#quick-start)
+- [Usage](#usage)
 - [Configuration](#configuration)
 - [Methodology](#methodology)
 - [Results](#results)
 - [Explainability (Grad-CAM)](#explainability-grad-cam)
 - [Reproducibility](#reproducibility)
-- [File Reference](#file-reference)
+- [Module Reference](#module-reference)
+- [Development](#development)
+- [Citation](#citation)
 - [License](#license)
 
 ---
@@ -36,7 +46,7 @@ Pneumonia is a leading cause of mortality worldwide, and chest X-ray imaging is 
 1. **Centralized training** — all data is pooled in one place (the classical baseline).
 2. **Federated training (FedAvg)** — data stays on simulated non-IID hospital clients; only model weights are aggregated by a central server.
 
-Both approaches are trained on the same architecture (`ResNet-18` by default) and evaluated on the same held-out test set, so the comparison is apples-to-apples.
+Both approaches use the same architecture (`ResNet-18` by default) and are evaluated on the same held-out test set, so the comparison is apples-to-apples.
 
 ---
 
@@ -50,6 +60,7 @@ Both approaches are trained on the same architecture (`ResNet-18` by default) an
 - **Explainability** — Grad-CAM heatmaps highlighting diagnostic regions
 - **Reproducible** — global seed for Python / NumPy / PyTorch + cuDNN deterministic mode
 - **Single-file config** — everything tunable from `configs/config.yaml`
+- **Installable package** — `pip install -e .` gives you the `xray-fl` CLI, a test suite, and CI
 
 ---
 
@@ -91,47 +102,64 @@ flowchart TD
 .
 ├── configs/
 │   └── config.yaml              # Single source of truth for all hyperparameters
+├── docs/
+│   └── images/                  # Figures embedded in this README
+├── results/                     # Committed metrics JSON + training histories
 ├── src/
-│   ├── data_loader.py           # Dataset loading, transforms, non-IID split
-│   ├── model.py                 # SimpleCNN + ResNet-18 builders, Grad-CAM target layer
-│   ├── train_centralized.py     # Centralized training entry point
-│   ├── train_federated.py       # FedAvg federated training entry point
-│   ├── client.py                # FederatedClient: local training logic
-│   ├── server.py                # FedAvg weight aggregation
-│   ├── evaluate.py              # Metrics, plots, Grad-CAM, standalone eval
-│   └── utils.py                 # Seed, config, device, metrics helpers
-├── outputs/                     # Generated artifacts (committed for reference)
-│   ├── models/                  # Saved checkpoints (.pt)
-│   ├── logs/                    # Training history + metrics (.json)
-│   └── plots/                   # All figures (.png)
+│   └── xray_fl/                 # Installable package
+│       ├── __init__.py
+│       ├── __main__.py          # python -m xray_fl
+│       ├── cli.py               # xray-fl command dispatcher
+│       ├── config.py            # Config loading + project-root resolution
+│       ├── data.py              # Datasets, transforms, non-IID client split
+│       ├── model.py             # SimpleCNN + ResNet-18 builders, Grad-CAM target layer
+│       ├── federated.py         # FederatedClient + sample-weighted FedAvg
+│       ├── train_centralized.py # Centralized training entry point
+│       ├── train_federated.py   # FedAvg federated training entry point
+│       ├── evaluate.py          # Metrics, plots, Grad-CAM, standalone evaluation
+│       └── utils.py             # Seed, device, IO, metric helpers
+├── tests/                       # pytest suite (no dataset required)
+├── outputs/                     # Generated locally: checkpoints + figures (gitignored)
 ├── data/                        # Dataset (NOT tracked — provide your own)
-├── .gitignore
+├── .github/workflows/ci.yml     # Lint + tests on Python 3.10 and 3.12
+├── CHANGELOG.md                 # Development log
+├── CITATION.cff
+├── CONTRIBUTING.md
 ├── LICENSE
-├── MODIFICATION_LOG.md          # Development changelog
-├── README.md                    # This file
-├── README_ZH.md                 # Chinese README
-└── requirements.txt
+├── Makefile                     # install / lint / test / train / figures / clean
+├── pyproject.toml               # Dependencies, CLI entry point, tool config
+├── requirements.txt             # Thin wrapper around `pyproject.toml`
+└── README.md / README_ZH.md
 ```
 
 ---
 
-## Environment Setup
+## Installation
 
-**Python:** 3.10 (recommended). Anaconda or venv both work.
+**Python 3.10+** is required. Anaconda and `venv` both work.
 
 ```bash
-# Option A — Anaconda
-conda create -n fl_xray python=3.10
-conda activate fl_xray
-pip install -r requirements.txt
+git clone https://github.com/isaac-sun/chest-xray-federated-learning.git
+cd chest-xray-federated-learning
 
-# Option B — venv
+# Option A — venv
 python3.10 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
+
+# Option B — conda
+conda create -n xray-fl python=3.10
+conda activate xray-fl
+pip install -e .
 ```
 
-`requirements.txt` includes: `torch`, `torchvision`, `scikit-learn`, `matplotlib`, `seaborn`, `pandas`, `tqdm`, `pyyaml`, `numpy`.
+`pip install -r requirements.txt` also works — it simply defers to `pyproject.toml`.
+
+For development (tests + lint):
+
+```bash
+pip install -e ".[dev]"
+```
 
 > **Note:** For GPU support, install the PyTorch build matching your CUDA version from [pytorch.org](https://pytorch.org/get-started/locally/). CPU and Apple Silicon (MPS) are auto-detected and supported.
 
@@ -144,7 +172,7 @@ This repository does **not** include the dataset. We use the publicly available 
 - **Source:** [Chest X-Ray Images (Pneumonia) on Kaggle](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia)
 - **Reference:** Kermany et al., *Identifying Medical Diagnoses and Treatable Diseases by Image-Based Deep Learning*, Cell, 2018.
 
-Download and organize it in ImageFolder format:
+Download and organize it in `ImageFolder` format:
 
 ```text
 data/
@@ -163,20 +191,37 @@ data/
 
 ---
 
-## Quick Start
+## Usage
+
+Three commands cover the whole workflow. Paths inside `configs/config.yaml` are resolved relative to the repository root, so you can run them from anywhere:
 
 ```bash
-# 1. Train the centralized baseline (saves model + metrics + plots)
-python src/train_centralized.py
+# 1. Train the centralized baseline (saves model + metrics + figures)
+xray-fl train-centralized
 
-# 2. Train the federated model (auto-detects centralized model for comparison)
-python src/train_federated.py
+# 2. Train the federated model (auto-detects the centralized model for comparison plots)
+xray-fl train-federated
 
-# 3. (Optional) Re-evaluate saved checkpoints and regenerate all plots
-python src/evaluate.py
+# 3. (Optional) Re-evaluate saved checkpoints and regenerate all figures
+xray-fl evaluate
 ```
 
-All artifacts are written under `outputs/`.
+Equivalent invocations:
+
+```bash
+python -m xray_fl train-centralized
+xray-fl train-centralized --config configs/config.yaml   # explicit config path
+make train                                               # convenience targets
+```
+
+| Artifact | Location | Tracked |
+| --- | --- | --- |
+| Model checkpoints | `outputs/models/` | no |
+| Figures | `outputs/plots/` | no |
+| Metrics JSON + training histories | `results/` | yes |
+| README figures | `docs/images/` | yes |
+
+Refresh the README figures after a run with `make figures`.
 
 ---
 
@@ -189,9 +234,9 @@ Everything is controlled via [`configs/config.yaml`](configs/config.yaml):
 | `seed` | `42` | Global random seed |
 | `data` | `image_size`, `num_workers`, `normalize_mean/std` | Input preprocessing |
 | `model` | `name: resnet18` (`simple_cnn` also supported), `pretrained` | Model selection |
-| `training` | `batch_size`, `epochs`, `learning_rate`, `weight_decay` | Centralized hyperparams |
+| `training` | `batch_size`, `epochs`, `learning_rate`, `weight_decay`, `use_weighted_sampler` | Centralized hyperparams |
 | `federated` | `num_clients`, `rounds`, `local_epochs`, `client_lr`, `noniid_*` | FedAvg + non-IID controls |
-| `paths` | `models_dir`, `plots_dir`, `logs_dir` | Output locations |
+| `paths` | `models_dir`, `plots_dir`, `results_dir` | Output locations |
 
 The non-IID split knobs (`noniid_ratio_span`, `noniid_min_ratio_floor`, `noniid_max_ratio_cap`, `noniid_min_samples_per_class`, `noniid_shuffle_target_ratios`) bound client class-ratio skew while guaranteeing exact sample conservation across clients.
 
@@ -239,6 +284,7 @@ Both models were trained with `ResNet-18` (from scratch, `seed=42`) and evaluate
 | **FN / TP** | 8 / 382 | 3 / 387 |
 
 **Observations:**
+
 - The centralized model achieves higher overall accuracy and precision.
 - The federated model achieves **near-perfect recall (99.23%)** — it catches almost all pneumonia cases — at the cost of more false positives. This is a clinically favorable trade-off (missing pneumonia is worse than a follow-up confirmatory scan).
 - Despite non-IID client distributions, FedAvg closes most of the gap to centralized training, validating federated learning as a viable privacy-preserving alternative.
@@ -246,38 +292,38 @@ Both models were trained with `ResNet-18` (from scratch, `seed=42`) and evaluate
 ### Training Curves
 
 <p align="center">
-  <img src="outputs/plots/loss_curve_comparison.png" width="46%" alt="Loss curves">
-  <img src="outputs/plots/accuracy_curve_comparison.png" width="46%" alt="Accuracy curves">
+  <img src="docs/images/loss_curve_comparison.png" width="46%" alt="Loss curves">
+  <img src="docs/images/accuracy_curve_comparison.png" width="46%" alt="Accuracy curves">
 </p>
 <p align="center"><em>Validation loss (left) and accuracy (right) — Centralized (per epoch) vs Federated (per round).</em></p>
 
 ### Metric Comparison
 
 <p align="center">
-  <img src="outputs/plots/centralized_vs_federated_bar.png" width="55%" alt="Metric comparison bar chart">
+  <img src="docs/images/centralized_vs_federated_bar.png" width="55%" alt="Metric comparison bar chart">
 </p>
 
 ### Confusion Matrices & ROC Curves
 
 <p align="center">
-  <img src="outputs/plots/centralized_confusion_matrix.png" width="32%">
-  <img src="outputs/plots/federated_confusion_matrix.png" width="32%">
-  <img src="outputs/plots/centralized_vs_federated_bar.png" width="0%" style="visibility:hidden">
+  <img src="docs/images/centralized_confusion_matrix.png" width="46%" alt="Centralized confusion matrix">
+  <img src="docs/images/federated_confusion_matrix.png" width="46%" alt="Federated confusion matrix">
 </p>
 <p align="center"><em>Centralized (left) and Federated (right) confusion matrices on the test set.</em></p>
 
 <p align="center">
-  <img src="outputs/plots/centralized_roc_curve.png" width="46%">
-  <img src="outputs/plots/federated_roc_curve.png" width="46%">
+  <img src="docs/images/centralized_roc_curve.png" width="46%" alt="Centralized ROC curve">
+  <img src="docs/images/federated_roc_curve.png" width="46%" alt="Federated ROC curve">
 </p>
 <p align="center"><em>ROC curves — Centralized AUC = 0.9600 (left), Federated AUC = 0.9449 (right).</em></p>
 
 ### Sample Predictions
 
 <p align="center">
-  <img src="outputs/plots/centralized_example_predictions.png" width="80%" alt="Centralized sample predictions">
+  <img src="docs/images/centralized_example_predictions.png" width="46%" alt="Centralized sample predictions">
+  <img src="docs/images/federated_example_predictions.png" width="46%" alt="Federated sample predictions">
 </p>
-<p align="center"><em>Centralized model predictions with probabilities on test images.</em></p>
+<p align="center"><em>Test-set predictions with probabilities — Centralized (left) and Federated (right).</em></p>
 
 ---
 
@@ -286,9 +332,10 @@ Both models were trained with `ResNet-18` (from scratch, `seed=42`) and evaluate
 Grad-CAM highlights the image regions most influential to the model's prediction, providing a sanity check that the model attends to lung opacities rather than spurious artifacts.
 
 <p align="center">
-  <img src="outputs/plots/centralized_gradcam_examples.png" width="80%" alt="Centralized Grad-CAM">
+  <img src="docs/images/centralized_gradcam_examples.png" width="46%" alt="Centralized Grad-CAM">
+  <img src="docs/images/federated_gradcam_examples.png" width="46%" alt="Federated Grad-CAM">
 </p>
-<p align="center"><em>Grad-CAM overlays for the centralized model (original left, heatmap right).</em></p>
+<p align="center"><em>Grad-CAM overlays (original left, heatmap right) — Centralized (left) and Federated (right).</em></p>
 
 ---
 
@@ -297,24 +344,58 @@ Grad-CAM highlights the image regions most influential to the model's prediction
 - A global seed (`config.seed`) is applied to `random`, `numpy`, `torch`, and `torch.cuda`
 - `torch.backends.cudnn.deterministic = True` and `benchmark = False` are set
 - With the same config + seed + hardware, run-to-run variance is minimized
-- Committed histories (`outputs/logs/*.json`) let `python src/evaluate.py` regenerate plots without retraining; model checkpoints (`outputs/models/*.pt`) are written locally and are not tracked
+- Committed histories (`results/*_history.json`) let `xray-fl evaluate` regenerate figures without retraining; model checkpoints (`outputs/models/*.pt`) are written locally and are not tracked
 
 ---
 
-## File Reference
+## Module Reference
 
-| File | Role |
+| Path | Role |
 |------|------|
-| `src/data_loader.py` | `ImageFolder` datasets, train/eval transforms, `WeightedRandomSampler`, non-IID client split with bounded skew |
-| `src/model.py` | `SimpleCNN`, `ResNet-18` builder with single-logit head, Grad-CAM target-layer resolver |
-| `src/train_centralized.py` | Centralized training loop, `pos_weight`, `ReduceLROnPlateau`, best-model tracking |
-| `src/train_federated.py` | FedAvg orchestration, global `pos_weight`, centralized comparison |
-| `src/client.py` | `FederatedClient` — local training from broadcast global weights |
-| `src/server.py` | `fedavg` — sample-size-weighted parameter aggregation |
-| `src/evaluate.py` | Metrics, confusion matrix, ROC, bar chart, training curves, Grad-CAM, sample predictions |
-| `src/utils.py` | Seed, config loader, device detection, binary metrics, serialization helpers |
+| `src/xray_fl/data.py` | `ImageFolder` datasets, train/eval transforms, `WeightedRandomSampler`, non-IID client split with bounded skew |
+| `src/xray_fl/model.py` | `SimpleCNN`, `ResNet-18` builder with single-logit head, Grad-CAM target-layer resolver |
+| `src/xray_fl/federated.py` | `FederatedClient` local training + sample-weighted `fedavg` aggregation |
+| `src/xray_fl/train_centralized.py` | Centralized training loop, `pos_weight`, `ReduceLROnPlateau`, best-model tracking |
+| `src/xray_fl/train_federated.py` | FedAvg orchestration, global `pos_weight`, centralized comparison |
+| `src/xray_fl/evaluate.py` | Metrics, confusion matrix, ROC, bar chart, training curves, Grad-CAM, sample predictions |
+| `src/xray_fl/config.py` | YAML config loading + project-root resolution |
+| `src/xray_fl/cli.py` | `xray-fl` subcommand dispatcher |
+| `src/xray_fl/utils.py` | Seed, device detection, IO, binary metrics |
 | `configs/config.yaml` | All hyperparameters in one place |
-| `outputs/` | Committed metrics JSON and plots for reference; model checkpoints are generated locally and not tracked |
+| `results/` | Committed metrics JSON and training histories |
+| `docs/images/` | Figures embedded in this README |
+
+---
+
+## Development
+
+```bash
+make lint    # ruff check .
+make test    # pytest
+```
+
+The test suite covers the non-IID split invariants (disjoint clients, exact sample conservation, no single-class collapse), FedAvg sample-weighting, metric helpers, and config resolution — and runs without the dataset. CI runs both checks on Python 3.10 and 3.12 for every push and pull request.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and [CHANGELOG.md](CHANGELOG.md) for the development log.
+
+---
+
+## Citation
+
+If you use this code or the reported results, please cite it:
+
+```bibtex
+@software{sun_chest_xray_federated_learning,
+  author  = {Sun, Yinan},
+  title   = {Chest X-ray Pneumonia Classification with Centralized + Federated Learning},
+  year    = {2026},
+  version = {0.1.0},
+  url     = {https://github.com/isaac-sun/chest-xray-federated-learning},
+  license = {MIT}
+}
+```
+
+GitHub also renders [`CITATION.cff`](CITATION.cff), so the "Cite this repository" button works out of the box.
 
 ---
 
@@ -322,4 +403,4 @@ Grad-CAM highlights the image regions most influential to the model's prediction
 
 This project is released under the [MIT License](LICENSE).
 
-The chest X-ray dataset is subject to its own license terms (see [Kaggle dataset page](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia)) and is **not** redistributed in this repository.
+The chest X-ray dataset is subject to its own license terms (see the [Kaggle dataset page](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia)) and is **not** redistributed in this repository.

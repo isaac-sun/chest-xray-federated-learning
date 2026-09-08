@@ -1,4 +1,19 @@
-# Modification Log
+# Changelog
+
+All notable changes to this project are documented here. Entries are grouped by date.
+
+## 2026-09-08
+
+### 1) Repository restructured into an installable `src/` package
+- Moved the flat `src/*.py` scripts into the `xray_fl` package under `src/xray_fl/`.
+- Merged `client.py` + `server.py` into `federated.py`; renamed `data_loader.py` to `data.py`.
+- Added `config.py` (config loading + project-root resolution), `cli.py`, and `__main__.py`.
+- Added `pyproject.toml` (dependencies, `xray-fl` console script, ruff/pytest config); `requirements.txt` now defers to it.
+- Added `tests/` (non-IID split invariants, FedAvg weighting, metrics, config loading) and GitHub Actions CI.
+- Added `Makefile`, `CONTRIBUTING.md`, `CITATION.cff`, `.editorconfig`, and issue/PR templates.
+- Moved committed figures from `outputs/plots/` to `docs/images/` and metrics/history from `outputs/logs/` to `results/`; `outputs/` is now fully gitignored.
+- Renamed the config key `paths.logs_dir` to `paths.results_dir` and made `training.use_weighted_sampler` explicit.
+- Fixed a latent `NameError`: `evaluate.py` imported `json` only under `__main__`.
 
 ## 2026-03-27
 
