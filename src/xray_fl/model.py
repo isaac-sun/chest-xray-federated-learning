@@ -1,4 +1,3 @@
-from typing import Dict
 
 import torch.nn as nn
 from torchvision.models import ResNet18_Weights, resnet18

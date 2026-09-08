@@ -15,13 +15,12 @@ venv/
 env/
 ENV/
 
-# --- IDE / Editor ---
+# --- IDE / editor ---
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
-*/.DS_Store
 
 # --- Jupyter ---
 .ipynb_checkpoints/
@@ -29,10 +28,14 @@ ENV/
 # --- Dataset (not tracked, provide your own) ---
 data/
 
-# --- Experiment artifacts (plots/logs kept for reference; checkpoints stay local) ---
-outputs/models/
-# outputs/logs/
-# outputs/plots/
+# --- Generated artifacts (regenerate with the xray-fl CLI) ---
+outputs/
+
+# --- Tooling caches ---
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # --- Logs / temp ---
 *.log

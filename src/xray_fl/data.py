@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict, List
 
 import numpy as np
 import torch
@@ -67,7 +66,7 @@ def _compute_client_class1_quotas(
     return target_c1.astype(np.int64)
 
 
-def build_transforms(config: Dict, train: bool = False):
+def build_transforms(config: dict, train: bool = False):
     """Build image transforms for train/eval splits."""
     image_size = config["data"]["image_size"]
     mean = config["data"]["normalize_mean"]
@@ -93,7 +92,7 @@ def build_transforms(config: Dict, train: bool = False):
     )
 
 
-def get_datasets(config: Dict, project_root: Path):
+def get_datasets(config: dict, project_root: Path):
     """Create ImageFolder datasets for train/val/test."""
     data_root = project_root / config["data"]["root_dir"]
 
@@ -108,7 +107,7 @@ def get_datasets(config: Dict, project_root: Path):
     return train_dataset, val_dataset, test_dataset
 
 
-def get_centralized_loaders(config: Dict, project_root: Path):
+def get_centralized_loaders(config: dict, project_root: Path):
     """Create centralized dataloaders for all splits."""
     train_dataset, val_dataset, test_dataset = get_datasets(config, project_root)
     batch_size = config["training"]["batch_size"]
@@ -173,7 +172,7 @@ def split_noniid_indices(
     max_ratio_cap: float = 0.85,
     min_samples_per_class: int = 1,
     shuffle_target_ratios: bool = True,
-) -> List[List[int]]:
+) -> list[list[int]]:
     """Simulate non-IID binary label skew by giving each client a different class ratio."""
     rng = np.random.default_rng(seed)
     targets = np.array(train_dataset.targets)
@@ -230,7 +229,7 @@ def split_noniid_indices(
     return client_indices
 
 
-def get_federated_client_loaders(config: Dict, project_root: Path):
+def get_federated_client_loaders(config: dict, project_root: Path):
     """Create local train loaders for each simulated federated client."""
     train_dataset, val_dataset, test_dataset = get_datasets(config, project_root)
 

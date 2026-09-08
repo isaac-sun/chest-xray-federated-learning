@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible problem with the code, config, or results
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the full traceback if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can it be reproduced?
+      description: Exact commands (e.g. `xray-fl train-centralized --config configs/config.yaml`) and config changes.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: output of `git rev-parse --short HEAD`
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, PyTorch version, device (CPU / CUDA / MPS).
+    validations:
+      required: true

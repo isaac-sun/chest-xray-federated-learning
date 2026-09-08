@@ -1,5 +1,5 @@
+import json
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,13 +8,14 @@ import torch
 import torch.nn.functional as F
 from sklearn.metrics import auc, roc_auc_score, roc_curve
 
-from model import get_target_layer
-from model import build_model
-from utils import compute_binary_metrics, get_device, load_config, save_json
+from .config import DEFAULT_CONFIG_PATH, load_config, resolve_path
+from .data import get_centralized_loaders
+from .model import build_model, get_target_layer
+from .utils import compute_binary_metrics, get_device, save_json
 
 
 @torch.no_grad()
-def collect_predictions(model, data_loader, device: torch.device) -> Tuple[List[int], List[float]]:
+def collect_predictions(model, data_loader, device: torch.device) -> tuple[list[int], list[float]]:
     """Run inference and collect true labels and predicted probabilities."""
     model.eval()
     y_true, y_prob = [], []
@@ -32,7 +33,7 @@ def collect_predictions(model, data_loader, device: torch.device) -> Tuple[List[
     return y_true, y_prob
 
 
-def evaluate_model(model, data_loader, device: torch.device) -> Dict:
+def evaluate_model(model, data_loader, device: torch.device) -> dict:
     """Compute core binary metrics and ROC-AUC for a trained model."""
     y_true, y_prob = collect_predictions(model, data_loader, device)
     metrics = compute_binary_metrics(y_true, y_prob)
@@ -45,7 +46,7 @@ def evaluate_model(model, data_loader, device: torch.device) -> Dict:
     return metrics
 
 
-def plot_confusion_matrix(conf_mat: List[List[int]], class_names: List[str], save_path: Path, title: str) -> None:
+def plot_confusion_matrix(conf_mat: list[list[int]], class_names: list[str], save_path: Path, title: str) -> None:
     """Plot and save confusion matrix heatmap."""
     cm = np.array(conf_mat)
     plt.figure(figsize=(6, 5))
@@ -58,7 +59,7 @@ def plot_confusion_matrix(conf_mat: List[List[int]], class_names: List[str], sav
     plt.close()
 
 
-def plot_roc_curve(y_true: List[int], y_prob: List[float], save_path: Path, title: str) -> float:
+def plot_roc_curve(y_true: list[int], y_prob: list[float], save_path: Path, title: str) -> float:
     """Plot ROC curve and return AUC."""
     fpr, tpr, _ = roc_curve(y_true, y_prob)
     roc_auc = auc(fpr, tpr)
@@ -79,8 +80,8 @@ def plot_roc_curve(y_true: List[int], y_prob: List[float], save_path: Path, titl
 
 
 def plot_training_comparison(
-    centralized_history: Dict[str, List[float]],
-    federated_history: Dict[str, List[float]],
+    centralized_history: dict[str, list[float]],
+    federated_history: dict[str, list[float]],
     save_dir: Path,
 ) -> None:
     """Plot centralized vs federated training curves for loss and accuracy."""
@@ -112,7 +113,7 @@ def plot_training_comparison(
     plt.close()
 
 
-def plot_metrics_bar(central_metrics: Dict, fed_metrics: Dict, save_path: Path) -> None:
+def plot_metrics_bar(central_metrics: dict, fed_metrics: dict, save_path: Path) -> None:
     """Create bar chart comparing key metrics of centralized and federated models."""
     metric_names = ["accuracy", "precision", "recall", "f1"]
     c_values = [central_metrics.get(m, 0.0) for m in metric_names]
@@ -135,7 +136,7 @@ def plot_metrics_bar(central_metrics: Dict, fed_metrics: Dict, save_path: Path) 
     plt.close()
 
 
-def denormalize_image(image: torch.Tensor, mean: List[float], std: List[float]) -> np.ndarray:
+def denormalize_image(image: torch.Tensor, mean: list[float], std: list[float]) -> np.ndarray:
     """Convert normalized tensor image to displayable NumPy RGB array."""
     mean_t = torch.tensor(mean).view(3, 1, 1)
     std_t = torch.tensor(std).view(3, 1, 1)
@@ -144,7 +145,9 @@ def denormalize_image(image: torch.Tensor, mean: List[float], std: List[float]) 
     return img.permute(1, 2, 0).numpy()
 
 
-def plot_example_predictions(model, data_loader, device: torch.device, config: Dict, save_path: Path, n: int = 8) -> None:
+def plot_example_predictions(
+    model, data_loader, device: torch.device, config: dict, save_path: Path, n: int = 8
+) -> None:
     """Plot sample predictions with probabilities for qualitative inspection."""
     class_names = getattr(data_loader.dataset, "classes", ["NORMAL", "PNEUMONIA"])
     mean = config["data"]["normalize_mean"]
@@ -228,7 +231,9 @@ class GradCAM:
         self.bwd_handle.remove()
 
 
-def plot_gradcam_examples(model, model_name: str, data_loader, device: torch.device, config: Dict, save_path: Path, n: int = 4) -> None:
+def plot_gradcam_examples(
+    model, model_name: str, data_loader, device: torch.device, config: dict, save_path: Path, n: int = 4
+) -> None:
     """Generate Grad-CAM overlays for sample images."""
     class_names = getattr(data_loader.dataset, "classes", ["NORMAL", "PNEUMONIA"])
     mean = config["data"]["normalize_mean"]
@@ -272,7 +277,7 @@ def plot_gradcam_examples(model, model_name: str, data_loader, device: torch.dev
     plt.close()
 
 
-def save_metrics(metrics: Dict, path: Path) -> None:
+def save_metrics(metrics: dict, path: Path) -> None:
     """Persist metrics dictionary to JSON file."""
     save_json(metrics, str(path))
 
@@ -287,19 +292,16 @@ def load_checkpoint_model(checkpoint_path: Path, default_model_name: str, device
     return model, model_name
 
 
-def main():
+def main(config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
     """Evaluate saved centralized/federated models and generate comparison artifacts."""
-    from data_loader import get_centralized_loaders
-
-    project_root = Path(__file__).resolve().parents[1]
-    config = load_config(str(project_root / "configs" / "config.yaml"))
+    config, project_root = load_config(config_path)
     device = get_device()
 
     _, _, test_loader = get_centralized_loaders(config, project_root)
 
-    models_dir = project_root / config["paths"]["models_dir"]
-    logs_dir = project_root / config["paths"]["logs_dir"]
-    plots_dir = project_root / config["paths"]["plots_dir"]
+    models_dir = resolve_path(project_root, config["paths"]["models_dir"])
+    results_dir = resolve_path(project_root, config["paths"]["results_dir"])
+    plots_dir = resolve_path(project_root, config["paths"]["plots_dir"])
 
     centralized_ckpt = models_dir / "centralized_best.pt"
     federated_ckpt = models_dir / "federated_best.pt"
@@ -324,8 +326,8 @@ def main():
     central_metrics = evaluate_model(central_model, test_loader, device)
     fed_metrics = evaluate_model(fed_model, test_loader, device)
 
-    save_metrics(central_metrics, logs_dir / "centralized_metrics_eval.json")
-    save_metrics(fed_metrics, logs_dir / "federated_metrics_eval.json")
+    save_metrics(central_metrics, results_dir / "centralized_metrics_eval.json")
+    save_metrics(fed_metrics, results_dir / "federated_metrics_eval.json")
 
     class_names = getattr(test_loader.dataset, "classes", ["NORMAL", "PNEUMONIA"])
 
@@ -360,12 +362,12 @@ def main():
 
     plot_metrics_bar(central_metrics, fed_metrics, plots_dir / "centralized_vs_federated_bar_eval.png")
 
-    centralized_history_path = logs_dir / "centralized_history.json"
-    federated_history_path = logs_dir / "federated_history.json"
+    centralized_history_path = results_dir / "centralized_history.json"
+    federated_history_path = results_dir / "federated_history.json"
     if centralized_history_path.exists() and federated_history_path.exists():
-        with open(centralized_history_path, "r", encoding="utf-8") as f:
+        with open(centralized_history_path, encoding="utf-8") as f:
             centralized_history = json.load(f)
-        with open(federated_history_path, "r", encoding="utf-8") as f:
+        with open(federated_history_path, encoding="utf-8") as f:
             federated_history = json.load(f)
         plot_training_comparison(centralized_history, federated_history, plots_dir)
 
@@ -409,6 +411,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import json
-
     main()

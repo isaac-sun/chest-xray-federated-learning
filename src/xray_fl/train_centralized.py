@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -7,8 +7,9 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 
-from data_loader import get_centralized_loaders
-from evaluate import (
+from .config import DEFAULT_CONFIG_PATH, load_config, resolve_path
+from .data import get_centralized_loaders
+from .evaluate import (
     collect_predictions,
     evaluate_model,
     plot_confusion_matrix,
@@ -17,8 +18,8 @@ from evaluate import (
     plot_roc_curve,
     save_metrics,
 )
-from model import build_model
-from utils import ensure_dir, epoch_binary_accuracy, get_device, load_config, set_seed
+from .model import build_model
+from .utils import ensure_dir, epoch_binary_accuracy, get_device, set_seed
 
 
 def compute_pos_weight_from_targets(targets, device: torch.device) -> torch.Tensor:
@@ -95,16 +96,15 @@ def evaluate_epoch(model, data_loader, criterion, device: torch.device):
     return running_loss / max(1, batches), running_acc / max(1, batches)
 
 
-def main():
+def main(config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
     """Train a centralized binary classifier and persist checkpoints/plots/metrics."""
-    project_root = Path(__file__).resolve().parents[1]
-    config = load_config(str(project_root / "configs" / "config.yaml"))
+    config, project_root = load_config(config_path)
 
     set_seed(config["seed"])
     device = get_device()
 
-    for key in ["models_dir", "plots_dir", "logs_dir"]:
-        ensure_dir(str(project_root / config["paths"][key]))
+    for key in ["models_dir", "plots_dir", "results_dir"]:
+        ensure_dir(resolve_path(project_root, config["paths"][key]))
 
     train_loader, val_loader, test_loader = get_centralized_loaders(config, project_root)
 
@@ -161,9 +161,9 @@ def main():
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    models_dir = project_root / config["paths"]["models_dir"]
-    logs_dir = project_root / config["paths"]["logs_dir"]
-    plots_dir = project_root / config["paths"]["plots_dir"]
+    models_dir = resolve_path(project_root, config["paths"]["models_dir"])
+    results_dir = resolve_path(project_root, config["paths"]["results_dir"])
+    plots_dir = resolve_path(project_root, config["paths"]["plots_dir"])
 
     best_model_path = models_dir / "centralized_best.pt"
     torch.save(
@@ -175,11 +175,11 @@ def main():
     )
     print(f"Saved best centralized model to: {best_model_path}")
 
-    with open(logs_dir / "centralized_history.json", "w", encoding="utf-8") as f:
+    with open(results_dir / "centralized_history.json", "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2)
 
     test_metrics = evaluate_model(model, test_loader, device)
-    save_metrics(test_metrics, logs_dir / "centralized_metrics.json")
+    save_metrics(test_metrics, results_dir / "centralized_metrics.json")
 
     y_true, y_prob = collect_predictions(model, test_loader, device)
     class_names = getattr(test_loader.dataset, "classes", ["NORMAL", "PNEUMONIA"])

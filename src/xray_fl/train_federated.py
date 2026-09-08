@@ -1,13 +1,14 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from client import FederatedClient
-from data_loader import get_federated_client_loaders
-from evaluate import (
+from .config import DEFAULT_CONFIG_PATH, load_config, resolve_path
+from .data import get_federated_client_loaders
+from .evaluate import (
     collect_predictions,
     evaluate_model,
     plot_confusion_matrix,
@@ -18,10 +19,10 @@ from evaluate import (
     plot_training_comparison,
     save_metrics,
 )
-from model import build_model
-from server import fedavg
-from utils import ensure_dir, epoch_binary_accuracy, get_device, load_config, set_seed
-import numpy as np
+from .federated import FederatedClient, fedavg
+from .model import build_model
+from .utils import ensure_dir, epoch_binary_accuracy, get_device, set_seed
+
 
 def compute_pos_weight_from_client_loaders(client_loaders, device: torch.device) -> torch.Tensor:
     """Compute global pos_weight from the union of all client subsets."""
@@ -63,7 +64,7 @@ def evaluate_global(model, data_loader, criterion, device: torch.device):
 
 def maybe_load_centralized_model(project_root: Path, config, device: torch.device):
     """Load centralized checkpoint if available for comparison plots."""
-    ckpt_path = project_root / config["paths"]["models_dir"] / "centralized_best.pt"
+    ckpt_path = resolve_path(project_root, config["paths"]["models_dir"]) / "centralized_best.pt"
     if not ckpt_path.exists():
         return None
 
@@ -75,16 +76,15 @@ def maybe_load_centralized_model(project_root: Path, config, device: torch.devic
     return model
 
 
-def main():
+def main(config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
     """Run Federated Averaging training with non-IID clients and save artifacts."""
-    project_root = Path(__file__).resolve().parents[1]
-    config = load_config(str(project_root / "configs" / "config.yaml"))
+    config, project_root = load_config(config_path)
 
     set_seed(config["seed"])
     device = get_device()
 
-    for key in ["models_dir", "plots_dir", "logs_dir"]:
-        ensure_dir(str(project_root / config["paths"][key]))
+    for key in ["models_dir", "plots_dir", "results_dir"]:
+        ensure_dir(resolve_path(project_root, config["paths"][key]))
 
     client_loaders, val_loader, test_loader = get_federated_client_loaders(config, project_root)
 
@@ -143,9 +143,9 @@ def main():
     if best_global_state is not None:
         global_model.load_state_dict(best_global_state)
 
-    models_dir = project_root / config["paths"]["models_dir"]
-    logs_dir = project_root / config["paths"]["logs_dir"]
-    plots_dir = project_root / config["paths"]["plots_dir"]
+    models_dir = resolve_path(project_root, config["paths"]["models_dir"])
+    results_dir = resolve_path(project_root, config["paths"]["results_dir"])
+    plots_dir = resolve_path(project_root, config["paths"]["plots_dir"])
 
     fed_model_path = models_dir / "federated_best.pt"
     torch.save(
@@ -157,11 +157,11 @@ def main():
     )
     print(f"Saved best federated model to: {fed_model_path}")
 
-    with open(logs_dir / "federated_history.json", "w", encoding="utf-8") as f:
+    with open(results_dir / "federated_history.json", "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2)
 
     fed_test_metrics = evaluate_model(global_model, test_loader, device)
-    save_metrics(fed_test_metrics, logs_dir / "federated_metrics.json")
+    save_metrics(fed_test_metrics, results_dir / "federated_metrics.json")
 
     y_true_f, y_prob_f = collect_predictions(global_model, test_loader, device)
     class_names = getattr(test_loader.dataset, "classes", ["NORMAL", "PNEUMONIA"])
@@ -198,15 +198,15 @@ def main():
         n=4,
     )
 
-    centralized_history_path = logs_dir / "centralized_history.json"
+    centralized_history_path = results_dir / "centralized_history.json"
     centralized_model = maybe_load_centralized_model(project_root, config, device)
 
     if centralized_model is not None and centralized_history_path.exists():
-        with open(centralized_history_path, "r", encoding="utf-8") as f:
+        with open(centralized_history_path, encoding="utf-8") as f:
             centralized_history = json.load(f)
 
         central_metrics = evaluate_model(centralized_model, test_loader, device)
-        save_metrics(central_metrics, logs_dir / "centralized_metrics_from_fed_run.json")
+        save_metrics(central_metrics, results_dir / "centralized_metrics_from_fed_run.json")
 
         plot_training_comparison(centralized_history, history, plots_dir)
         plot_metrics_bar(central_metrics, fed_test_metrics, plots_dir / "centralized_vs_federated_bar.png")
@@ -230,7 +230,7 @@ def main():
             "centralized": central_metrics,
             "federated": fed_test_metrics,
         }
-        with open(logs_dir / "comparison_metrics.json", "w", encoding="utf-8") as f:
+        with open(results_dir / "comparison_metrics.json", "w", encoding="utf-8") as f:
             json.dump(comparison_payload, f, indent=2)
 
         print("Generated centralized-vs-federated comparison artifacts.")
